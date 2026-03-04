@@ -1,0 +1,20 @@
+[Unit]
+Description=KMS Gateway for Talos Disk Encryption
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/kms-gateway
+EnvironmentFile=/etc/kms-gateway/kms-gateway.env
+Restart=always
+RestartSec=5
+User=kms-gateway
+Group=kms-gateway
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/
+
+[Install]
+WantedBy=multi-user.target

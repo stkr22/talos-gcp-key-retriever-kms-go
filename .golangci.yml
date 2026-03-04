@@ -1,0 +1,24 @@
+version: "2"
+
+formatters:
+  enable:
+    - goimports
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - bodyclose
+    - revive
+  settings:
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+
+run:
+  timeout: 5m
