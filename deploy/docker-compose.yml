@@ -1,0 +1,13 @@
+services:
+  kms-gateway:
+    image: ghcr.io/stkr22/talos-gcp-key-retriever-kms-go:1.0.0
+    restart: always
+    ports:
+      - "4050:4050"
+    env_file:
+      - kms-gateway.env
+    volumes:
+      - ./credentials.json:/run/kms-gateway/credentials.json:ro
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
