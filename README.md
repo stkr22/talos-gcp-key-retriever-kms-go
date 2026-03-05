@@ -28,12 +28,63 @@ The `node_uuid` is passed as Additional Authenticated Data (AAD), binding each s
 
 The threat is **physical theft of the server**. Without access to the KMS gateway (and its GCP credentials), sealed key blobs in the META partition are useless. The gateway runs without TLS on the local network — network sniffing on a home LAN is not in scope.
 
+## GCP Cloud KMS Setup
+
+This gateway uses **Cloud KMS symmetric encryption keys** — not Secret Manager. The difference matters: with Secret Manager you store and retrieve a passphrase, meaning the secret exists on your server. With Cloud KMS symmetric keys, encryption and decryption happen server-side at Google — the actual cryptographic key never leaves GCP infrastructure. Your server only ever sees ciphertext.
+
+### Create the KMS resources
+
+```bash
+PROJECT_ID="your-gcp-project"
+LOCATION="europe-west1"  # choose a region close to you
+
+# Create a Key Ring (permanent once created — choose the name carefully)
+gcloud kms keyrings create talos \
+  --project=$PROJECT_ID \
+  --location=$LOCATION
+
+# Create a symmetric encryption key
+gcloud kms keys create disk-encryption \
+  --project=$PROJECT_ID \
+  --location=$LOCATION \
+  --keyring=talos \
+  --purpose=encryption \
+  --protection-level=software
+```
+
+### Create a service account
+
+```bash
+# Create a dedicated service account
+gcloud iam service-accounts create kms-gateway \
+  --project=$PROJECT_ID \
+  --display-name="Talos KMS Gateway"
+
+# Grant encrypt/decrypt permission on the specific key only
+gcloud kms keys add-iam-policy-binding disk-encryption \
+  --project=$PROJECT_ID \
+  --location=$LOCATION \
+  --keyring=talos \
+  --member="serviceAccount:kms-gateway@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/cloudkms.cryptoKeyEncrypterDecrypter"
+
+# Export the service account key JSON
+gcloud iam service-accounts keys create credentials.json \
+  --iam-account="kms-gateway@${PROJECT_ID}.iam.gserviceaccount.com"
+```
+
+The resulting `KMS_KEY_NAME` for your config is:
+```
+projects/your-gcp-project/locations/europe-west1/keyRings/talos/cryptoKeys/disk-encryption
+```
+
+### Cost
+
+Cloud KMS costs ~$0.06/month per active key version + $0.03 per 10,000 operations. For a home Talos cluster this is essentially free.
+
 ## Prerequisites
 
-- A GCP project with:
-  - A Cloud KMS Key Ring and symmetric encryption key (purpose: `ENCRYPT_DECRYPT`)
-  - A service account with `roles/cloudkms.cryptoKeyEncrypterDecrypter`
-  - The service account key JSON file
+- GCP Cloud KMS resources created as described above
 - A Raspberry Pi (arm64) or similar device on the same network as Talos nodes
 
 ## Configuration

@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/talos-gcp-key-retriever-kms-go/internal/config"
 	"github.com/talos-gcp-key-retriever-kms-go/internal/gateway"
@@ -69,6 +70,7 @@ func run(ctx context.Context, cfg *config.Config) error {
 	s := grpc.NewServer()
 	kms.RegisterKMSServiceServer(s, srv)
 	health.Register(s)
+	reflection.Register(s)
 
 	// Listen
 	lis, err := net.Listen("tcp", cfg.ListenAddress)
